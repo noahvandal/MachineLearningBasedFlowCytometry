@@ -15,7 +15,7 @@ from torch.utils.data import Dataset
 # Build a model by implementing define-by-run design from Optuna
 def build_model_custom(trial):
     
-    
+    ## number of convolution layers, number of fc layers.
     n_conv_layers = trial.suggest_int("n_layers", 1, 3)
     n_fc_layers = trial.suggest_int("n_layers", 1, 3)
 
@@ -28,10 +28,12 @@ def build_model_custom(trial):
     
     for i in range(n_conv_layers):
         
+        ## suggest number of filters, kernel size
         out_features = trial.suggest_int("n_units_conv{}".format(i), 4, 256)
         kernel = trial.suggest_int("kernel_conv{}".format(i), 1, 9, step=2)
         
         layers.append(nn.Conv2d(in_features, out_features, kernel))
+        ## always relu, maxpool
         layers.append(nn.ReLU())
         layers.append(nn.MaxPool2d(2, 2))
 
@@ -40,15 +42,14 @@ def build_model_custom(trial):
         print(imageshape, kernel)
         in_features = out_features
    
-    # calculating inptu dimensions for fc layer
-    print(imageshape, out_features)
+    # calculating input dimensions for fc layer
     in_features = int(imageshape * imageshape * out_features)
 
     layers.append(nn.Flatten()) ## flatten input for fc layer
     
-    
     for i in range(n_fc_layers):
         
+        ## suggesting number of units for fc layer
         out_features = trial.suggest_int("n_units_fc{}".format(i), 4, 256)
      
         layers.append(nn.Linear(in_features, out_features))
@@ -58,8 +59,6 @@ def build_model_custom(trial):
         
     layers.append(nn.Linear(in_features, 2))
     layers.append(nn.Softmax())
-
-    print(layers)
     
     return nn.Sequential(*layers)
 
@@ -120,69 +119,52 @@ def train_and_evaluate(param, model, trial, sourcePath):
         valStep = 0
 
         for stepsize in range(numsteps):
-            # print('train step: ',stepsize)
             for i, data in enumerate(train):
-                # print(i)
                 inputs, label, name = data
 
-                # print(name)
-
                 optimizer.zero_grad()
-
-                # with torch.set_grad_enabled(True):
 
                 inputs = inputs.to(device)
                 label = label.to(device)
                 outputs = model(inputs)
-                # outputs = outputs.detach().cpu()
 
-                # print(outputs, label)
                 loss = criterion(outputs, label)
                 tLoss += loss   
                 loss.backward()
                 optimizer.step() ## decay if necessary for adam
                 outLoss, index = torch.max(outputs, dim=1)
                 _,labelIndex = torch.max(label, dim=1)
-                # print('train inaccuracy')
+
+                ## accuracy metrics
                 acc, _ = checkAccuracy(index,labelIndex,classes, printOutput = False)
-                # print(acc)
-                # print(acc)
                 tAcc += acc
                 trainstep += 1
         
+        #save training data
         tAcc = (tAcc / (trainstep)) / numsteps
-
         tLoss = tLoss.cpu().detach().numpy()
         tLoss = (tLoss / trainstep) 
-
-
 
         valstep = 0
         with torch.no_grad(): ## no need to calculate gradients for validation
             for stepsize in range(valnumsteps):
-                # print('val step: ',stepsize)
                 for i, data in enumerate(val):
-                    # print(i)
                     inputs, label, index = data
 
                     inputs = inputs.to(device)
                     label = label.to(device)
                     outputs = model(inputs)
-                    # outputs = outputs.detach().cpu()
 
-                    # outputs = nn.Softmax(dim=0)(outputs)
                     vLoss += criterion(outputs, label)
-                    # outLoss = sm(outputs)
                     outLoss, index = torch.max(outputs, dim=1)
                     _,labelIndex = torch.max(label, dim=1)
-                    # print(index, labelIndex)
+
+                    ## accuracy metrics
                     acc, _ = checkAccuracy(index,labelIndex,classes, printOutput = False)
-                    # print(acc)
-                    # print(acc)
+
                     vAcc += acc
                     valstep += 1
         
-        # print(vAcc, valstep, valnumsteps)
         vAcc = (vAcc / (valstep)) 
 
         print('Epoch:',e, 'vAcc:',vAcc)
@@ -195,6 +177,8 @@ def train_and_evaluate(param, model, trial, sourcePath):
             raise optuna.exceptions.TrialPruned()
 
     return vAcc
+  
+
   
 # Define a set of hyperparameter values, build the model, train the model, and evaluate the accuracy
 def objective(trial):

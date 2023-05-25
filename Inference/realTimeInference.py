@@ -42,9 +42,7 @@ def onehotToBW(image,outputAsRGB=False):
 
 def loadUNETModel(modelPath):
     model = UNET(in_channels=3, classes=2)
-    # checkpoint = torch.load(modelPath, map_location=torch.device(DEVICE))
     model.load_state_dict(torch.load(modelPath, map_location=torch.device(DEVICE)))
-    # model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     print(f'{modelPath} has been loaded and initialized')
 

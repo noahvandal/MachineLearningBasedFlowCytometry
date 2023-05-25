@@ -10,10 +10,6 @@ import cv2
 
 # create labels for each of the classes, resepective to the color scheme given for mask creation
 Label = namedtuple('Label', ['name', 'id', 'color'])
-# labels = [Label('HPNE', 0, (0, 255, 255)),
-#           Label('MIA', 1, (255, 0, 255)),
-#           Label('PSBead', 2, (255, 255, 0)),
-#           Label('Background', 3, (255, 255, 255))]
 
 labels = [Label('HPNE', 0, (0, 255, 255)),
           Label('MIA', 1, (255, 0, 255)),
@@ -35,29 +31,34 @@ cellColor2Label = {label.color: label for label in cellLabels}
 
 
 class Dataset(Dataset):
+    '''
+    Strucutre of this dataloader;
+    rootDir
+        -Masks
+        -Images
+    
+    the name of both the mask and image must be the same
+
+    The output is a list of tensors
+    '''
     def __init__(self, rootDir, transform=None, eval=False):
         self.transform = transform
         self.maskList = []
         self.imgList = []
         self.eval = eval
 
-        # self.maskPath = os.path.join(os.getcwd(), rootDir + '/Images/')
-        # self.imgPath = os.path.join(os.getcwd(), rootDir + '/Masks/')
+
         self.maskPath = os.path.join(rootDir + '/Masks/')
         self.imgPath = os.path.join(rootDir + '/Images/')
 
-        # print('maskpath', self.maskPath, self.imgPath)
-
         imgItems = os.listdir(self.imgPath)
-        # print(imgItems)
 
         maskItems = [rootDir + '/Masks/' + path for path in imgItems]
         imgItems = [rootDir + '/Images/' + path for path in imgItems]
 
         self.maskList.extend(maskItems)
         self.imgList.extend(imgItems)
-        # print(self.maskList)
-        # print(self.imgList)
+
 
     def __len__(self):
         length = len(self.imgList)
@@ -75,16 +76,10 @@ class Dataset(Dataset):
             mask = self.transform(mask)
 
         img = transforms.ToTensor()(img)
-        # mask = transforms.ToTensor()(mask)
-        # mask = np.array(mask)
-        # print(mask.shape)
-        # mask = np.transpose(mask, [1, 2, 0])
-        mask = rgbToOnehotNew(mask, cellColor2Label)
-        # print('mask shape', mask.shape)
 
-        # mask = mask[2, :, :]  # removing the alpha channel (not really needed)
+        mask = rgbToOnehotNew(mask, cellColor2Label)
+
         mask = torch.from_numpy(mask)
-        # mask = torch.from_numpy(mask)
         mask = mask.type(torch.LongTensor)
 
         if self.eval:
@@ -92,11 +87,9 @@ class Dataset(Dataset):
         else:
             return img, mask
 
-        return img, mask
+
 
 # getting datset using dataload function and native functions from torch
-
-
 def getDataset(rootDir, transform=None, batchSize=1, shuffle=True, pin_memory=True, eval=False):
     data = Dataset(rootDir=rootDir, transform=transform, eval=eval)
     dataLoaded = torch.utils.data.DataLoader(data, batch_size=batchSize,
@@ -163,7 +156,6 @@ def outputClassImages(onehot, color_dict):
     onehot = np.argmax(onehot, axis=1)
     onehot = np.transpose(onehot, [1, 2, 0])
 
-    # numClasses = len(color_dict.keys())
     outputList = []  # temporarily store each image as it is created
     totalOutput = 255*np.ones(onehot.shape[0:2]+(3,))
 

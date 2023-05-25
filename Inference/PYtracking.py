@@ -49,7 +49,6 @@ class Tracking():
         current_list_copy = self.currentList.copy()
         # current_list_copy = list(filter(None, current_list_copy))
         point_list = []
-        # print(current_list)
 
         avgPositionChangeList = []
         avgPositionChange = 0
@@ -57,7 +56,6 @@ class Tracking():
         for object_id, pt2 in tracking_dict_copy.items():
             object_exists = False
             for pt in current_list_copy:
-                # distance = math.hypot(pt2[0] - pt[0], pt2[1] - pt[1])
 
                 # Update IDs position
                 isSimilar, distance = self.arePointsSimilar(pt, pt2)
