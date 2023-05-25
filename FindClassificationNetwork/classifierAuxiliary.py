@@ -41,6 +41,13 @@ def isClass(str): ## given string, is the class contained in the name?
 
 
 class dataGenerator(Dataset):
+    '''
+    Dataset generator for classification network.
+    The input is a pandas dataset, with images and associated labels. 
+
+    Need: dataset split, and each image contain class ['HPNE', 'MIA'] in name.
+
+    '''
     def __init__(self, dataframe, batchsize, numsteps, isVal = False, transformList=None):
         self.dataframe = dataframe
         self.batchsize = batchsize
@@ -52,7 +59,6 @@ class dataGenerator(Dataset):
     
     def __len__(self):
         length = len(self.dataframe) 
-        # print(length)
         return length
 
     def on_epoch_end(self):
@@ -63,27 +69,20 @@ class dataGenerator(Dataset):
         labels = []
 
         img = cv2.imread(self.dataframe["Image"][index])
-        # print(self.dataframe["Image"][index])
         img = cv2.resize(img,self.resize)
-        # img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        # img = np.expand_dims(img, axis=2)
+
         label = np.array(self.dataframe["Class"][index])
 
         images.append(img)
         labels.append(label)
 
         if self.transformList:
-            # plt.imshow(img)
-            # plt.show()
+
             img = np.transpose(img, [2, 0, 1]) ## torch expects [:.., W, H]
             img = torch.from_numpy(img)
             img = self.transformList(img)
             img = img.float()
 
-            # testshow = np.asarray(img)
-            # testshow = np.transpose(testshow, [1, 2, 0])
-            # plt.imshow((testshow).astype(np.uint8))
-            # plt.show()   
 
 
         else:
@@ -151,6 +150,9 @@ def datasetAcquirerShuffler(srcPath, numTrain, numVal):  ## input path to datase
     return trainPaths, valPaths
 
 def createDataFrameFolder(srcPath):
+    '''
+    Given path to folder, create dataframe with image path and class.
+    '''
     allFiles = os.listdir(srcPath)
     allPaths = []
     for i, data in enumerate(allFiles):
@@ -189,6 +191,9 @@ def datasetAcquirerShufflerWithTest(srcPath, numTrain, numVal, numTest):  ## inp
 
 
 def rollingAverage(inputlist, window):
+    '''
+    Will calculate rolling average of signal desired; used for viewing while training. 
+    '''
     if len(inputlist) >= window:
         while len(inputlist) > window:
             inputlist.pop(0)
@@ -197,6 +202,9 @@ def rollingAverage(inputlist, window):
     return avg
 
 def plotTrain(data, isList):
+    '''
+    plot train, val data while training. 
+    '''
     if isList:
         data = np.array(data)
 
@@ -228,6 +236,11 @@ def plotTrain(data, isList):
 
 
 def negateBackground(feature, image):
+
+    '''
+    Negated background to prevent artifacts from being included as part of learned features.
+    '''
+
     coord, contour = feature
     x, y, w, h = coord
 
@@ -242,9 +255,7 @@ def negateBackground(feature, image):
 
     ## how much of image is good content
     zeroPixels = np.sum(np.all(segment == [0,0,0], axis=-1))
-    # print(segment.shape)
     totalPixels = segment.shape[0] * segment.shape[1] 
-    # print(zeroPixels, totalPixels)
 
     percentInfo = 1 - zeroPixels / totalPixels # percent of pixels that are not black / total number of pixels
 
@@ -293,46 +304,38 @@ def scaleImage(image):
 
     return image
 
-def outputRegions(image, imageName, regions, imgSavePath, binaryBackground=False): ## given list of regions, segment src image per each region
+
+def outputRegions(image, imageName, regions, imgSavePath, binaryBackground=False): 
+    '''
+    given list of regions, segment src image per each region
+    '''
     imagelist = []
     resize = (64,64) ## somewhat arbritrary; cifar10 uses 32x32, mnist uses 28x28, imagenet uses approx. 480x300. want good resolution, but not too much of upscale.
-    # print(len(regions))
 
-    # print(imgSavePath)
     for i, region in enumerate(regions):
-        # if len(region) != 0:
         savePath = ''
-        # segment = image[x:(x+w), y:(y+h), :]
 
         ## recutangular regions and contours
         if binaryBackground:
             segment, percentInfo = negateBackground(region, image)
-            # print(percentInfo)
-        ## if regular regions, not list of contours and rectangular regions
         else:
             x, y, w, h = region
             segment = image[y:(y+h),x:(x+w),:]
         try:
-            segment = cv2.resize(segment, resize)
+            segment = cv2.resize(segment, resize, cv2.INTER_LINEAR)
         except:
             continue
         name = imageName + '_' + str(i)
         if imgSavePath is not None:
-            # # print(segment.shape)
-            # if 'HPNE' in name:
-            #     savePath = imgSavePath  
-            # if 'MIA' in name: 
-            #     savePath = imgSavePaths
             savePath = imgSavePath
             try:
-                # print(name)
-                # print(savePath)
                 if percentInfo > 0.7: ## getting rid of images that are mostly background
                     saveImage(segment, name, savePath, secondImage=False)
-                # saveImage(segment, name, savePath, secondImage=False)
             except:
                 continue
         else:
             imagelist.append(segment)
         
     return imagelist
+
+
