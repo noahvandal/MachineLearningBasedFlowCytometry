@@ -1,0 +1,22 @@
+The 'TrainUNET' has python files that allow for training a binary (or multiclass, with revisions) segmentation mask given input files. The dataset structure should be as follows: 
+
+TrainDataset 
+--Images
+--Masks
+ValDataset
+--Images
+--Masks
+
+
+The 'TrainClassification' folder has files that allow for training the classification model, as predefined in the 'classifierNets.py' or hyperparamSearch.py files. The datset strucutre should be as follows: 
+
+Dataset (with names denoting class in each file name, and a train split (6/3/1 used) defined)
+
+
+The 'FindClassificationNetwork' folder has files that were used to find the ideal classification network, using the Optuna package from python. 
+
+
+The 'Inference' folder contains the python files to run inference on a set of videos after models have been trained. The script 'realTimeInference.py' is what is run to inference a list of videos contained in a folder. 
+
+
+The 'Auxiliary' folder has a list of python files that are used for post processing or other purposes not directly related to inferencing or training, but that proved useful during our code creation process. 
