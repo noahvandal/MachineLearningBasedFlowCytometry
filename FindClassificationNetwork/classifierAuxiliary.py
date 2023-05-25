@@ -252,6 +252,46 @@ def negateBackground(feature, image):
     return segment, percentInfo
 
 
+def saveImage(image, imageName, savePath, secondImage=False):
+    imageSavePath = savePath + imageName + '.png'
+
+    if secondImage is not False:
+        image = scaleImage(image)
+        secondImage = scaleImage(secondImage)
+        fImage = stackImages(image, secondImage)
+        cv2.imwrite(imageSavePath, fImage)
+
+    else:
+        image = scaleImage(image)
+        cv2.imwrite(imageSavePath, image)
+
+
+def stackImages(img1, img2):  # both images must be input as numpy array dtype
+    h, w, _ = img1.shape
+
+    if (img2.shape[0] != h) or (img2.shape[1] != w):
+        cv2.resize(img2, (h, w))
+
+    if len(img2.shape) == 2:
+        img2 = np.expand_dims(img2, axis=-1)
+        img2 = np.float32(img2)
+
+        # if is single channel grayscale, convert to rgb for concatenation and better saving.
+        img2 = cv2.cvtColor(img2, cv2.COLOR_GRAY2RGB)
+
+    outimage = np.hstack([img1, img2])
+
+    return outimage
+
+
+def scaleImage(image):
+    maxPixel = np.max(image)
+    if maxPixel > 1:  # if a pixel value is greater than 1, then it is not normalized and is in range 0-255 most likely
+        image = image
+    else:
+        image = 255*image
+
+    return image
 
 def outputRegions(image, imageName, regions, imgSavePath, binaryBackground=False): ## given list of regions, segment src image per each region
     imagelist = []
@@ -273,7 +313,7 @@ def outputRegions(image, imageName, regions, imgSavePath, binaryBackground=False
             x, y, w, h = region
             segment = image[y:(y+h),x:(x+w),:]
         try:
-            segment = resizeImage(segment,resize)
+            segment = cv2.resize(segment, resize)
         except:
             continue
         name = imageName + '_' + str(i)
@@ -282,7 +322,7 @@ def outputRegions(image, imageName, regions, imgSavePath, binaryBackground=False
             # if 'HPNE' in name:
             #     savePath = imgSavePath  
             # if 'MIA' in name: 
-            #     savePath = imgSavePath
+            #     savePath = imgSavePaths
             savePath = imgSavePath
             try:
                 # print(name)
