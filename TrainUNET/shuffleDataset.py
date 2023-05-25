@@ -4,6 +4,9 @@ import random
 import cv2
 
 def shuffleDataset(rootDir, outputDir, shuffle=True, trainVal = False, valSplit=0.2):
+    '''
+    used this to create train, validation split and corresponding folders. Should only have to be done once, after which files will be in correct location for dataloader. 
+    '''
     
     ## ensure output directory exists
     if not os.path.exists(outputDir):

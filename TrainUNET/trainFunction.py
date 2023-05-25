@@ -37,24 +37,18 @@ def saveImage(image, savePath, isOneHot):
     image = image[0, :, :, :] ## remove batch dimension
     image = np.transpose(image, [1, 2, 0]) ### proper format for cv2
 
-    # print('image shape:', image.shape)
-
     if isOneHot:
         image = onehotToIMG(image)
     
     image = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    # if not isOneHot:
-        # image = image[0,:,:,:] ## dont know why this is necessary
 
     cv2.imwrite(savePath, image)
-    # print('saved image to:', savePath)
 
 
 
 def determineROI(imgA, imgB):
     ## ensure on correct device
     imgA, imgB = imgA.cpu().detach().numpy(), imgB.cpu().detach().numpy()
-    
     imgA, imgB = np.array(imgA), np.array(imgB)
 
     ## ensure predictions are either 1 or 0
@@ -68,7 +62,7 @@ def determineROI(imgA, imgB):
 
     return roi
 
-## for stopping early
+## for stopping early; necesssary to prevent overfitting
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
         self.patience = patience
@@ -90,11 +84,11 @@ class EarlyStopper:
 def trainFunction(model, modelSave, csvSave, trainDataPath, valDataPath, hyperparams):
     lr, batchSize, epochs, classWeights, earlyStop = hyperparams
 
-    # miaWeight, hpneWeight = classWeights
-
+    ## data 
     traindata = getDataset(trainDataPath, batchSize=batchSize, shuffle=True, pin_memory=True, eval=False)
     valdata = getDataset(valDataPath, batchSize=batchSize, shuffle=True, pin_memory=True, eval=True)
 
+    ## optimizer, loss function type
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
     lossFunction = torch.nn.CrossEntropyLoss(weight=torch.tensor(classWeights).to(device))
 
@@ -102,11 +96,6 @@ def trainFunction(model, modelSave, csvSave, trainDataPath, valDataPath, hyperpa
     earlystopper = EarlyStopper(patience=10, min_delta=0.001)
 
     ## storing train data
-    trainLoss = []
-    valLoss = []
-    trainroi = []
-    valroi = []
-
     trainingData = []
 
     for epoch in range(epochs):
@@ -114,14 +103,11 @@ def trainFunction(model, modelSave, csvSave, trainDataPath, valDataPath, hyperpa
         epochData = []
         epochData.append(epoch)
 
-        ## train step
         stepLoss = 0
         stepAcc = 0
         stepiter = 0
 
-        # print(type(traindata))
-        # print(len(traindata))
-        # print(traindata.shape)
+
         for idx, batch in enumerate(tqdm(traindata)):
             x, y = batch
             x, y = x.to(device), y.to(device)
@@ -130,8 +116,6 @@ def trainFunction(model, modelSave, csvSave, trainDataPath, valDataPath, hyperpa
 
             predictions, y = predictions.float(), y.float()
 
-            # print(type(predictions), type(y))
-            # print(predictions.shape, y.shape)
             loss = lossFunction(predictions, y)
 
             optimizer.zero_grad()
@@ -148,6 +132,8 @@ def trainFunction(model, modelSave, csvSave, trainDataPath, valDataPath, hyperpa
         etrainloss = stepLoss / stepiter
         etrainroi = stepAcc / stepiter
 
+
+        ## saving data for later use and viewing
         tp, tn, fp, fn = vals
         epochData.append(etrainloss)
         epochData.append(etrainroi)
@@ -155,14 +141,7 @@ def trainFunction(model, modelSave, csvSave, trainDataPath, valDataPath, hyperpa
         epochData.append(tn)
         epochData.append(fp)
         epochData.append(fn)
-        # epochData.extend(etrainloss, etrainroi, tp, tn, fp, fn)
-        
-        # trainLoss.append(stepLoss / stepiter)
-        # trainroi.append(stepAcc / stepiter)
 
-        ## validation step
-
-        ## random image from validation set
         randint = np.random.randint(0, len(valdata))
         stepLoss = 0
         stepAcc = 0
@@ -184,17 +163,15 @@ def trainFunction(model, modelSave, csvSave, trainDataPath, valDataPath, hyperpa
             stepiter += 1
 
             if idx == randint:
-
+                ## saving one image for viewing from the validation set; this way we can see how the training progressed. 
                 saveImage(x, valDataPath + 'Output/e' + str(epoch) + '_' + str(idx) + 'test.png', isOneHot = False)
                 saveImage(y, valDataPath + 'Output/e' + str(epoch) + '_' + str(idx) + 'testmask.png', isOneHot = True)
                 saveImage(predictions, valDataPath   + 'Output/e' + str(epoch) + '_' + str(idx) + 'testpred.png', isOneHot = True)
-                # print(f'Image: {name[0]} | Val Loss: {loss.item()} | Val ROI: {determineROI(predictions, y)}')
-        
-        # valLoss.append(stepLoss / stepiter)
-        # valroi.append(stepAcc / stepiter)
+
         evalloss = stepLoss / stepiter
         evalroi = stepAcc / stepiter
 
+        ## saving data for later use and viewing
         tp, tn, fp, fn = vals
         epochData.append(evalloss)
         epochData.append(evalroi)

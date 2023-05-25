@@ -13,26 +13,22 @@ def showImage(image):
     cv2.destroyAllWindows()
 
 def onehotToBW(image,isTensor=False, outputAsRGB=False):   
+    '''
+    Same function as in 'datasets' file, but this one is for testing
+    '''
     if isTensor:
-        # print(image.shape)
         image = convertTensorTypeToNumpy(image)
-        # print(image.shape)
 
     output = np.zeros([image.shape[0], image.shape[1]])
     output = np.expand_dims(output, axis=-1)
     image = np.argmax(image, axis=-1, keepdims=True)
-    # print(image.shape)
     output[np.all(image == 1, axis=-1)] = 255 ## background 
     output[np.all(image == 0, axis=-1)] = 0 ## foreground
     output = output.astype('uint8')
-    # print(np.sum(np.all(output == [255], axis=-1)))
-    # print(output.shape)
-    # showImage(output)
 
     if outputAsRGB:
         output = cv2.cvtColor(output, cv2.COLOR_GRAY2RGB)
 
-    # showImage(output)
     return output
 
 
@@ -43,8 +39,11 @@ def compareTwoImages(A, B, C):
 
 
 def convertTensorTypeToNumpy(image):
+    '''
+    Necessary for unloading model output
+    '''
     image = image.cpu().detach().numpy()
-    image = image[0,:,:,:] # getting rid fo the batch dimension
+    image = image[0,:,:,:] # getting rid of the batch dimension
     image = np.transpose(image, [1,2,0])
 
     return image
@@ -65,7 +64,6 @@ def testFunction(model, sourceDataset,imageSavePath, csvSavePath, device):
 
   
     for step in range(testSteps):
-        # print('val step')
         for i, (input, target, name) in enumerate(valData):
 
             origimg = input
@@ -74,31 +72,33 @@ def testFunction(model, sourceDataset,imageSavePath, csvSavePath, device):
             output = model(input)
 
 
-
             precision, recall, F1, acc, xorImg, tpVals = accuracy(output, target)
 
             iou = IoU(output, target)
 
-            # print(iou)
-
-    
+            ## convert to image class as numpy array
             output = onehotToBW(output, True, True)
 
             origimg = convertTensorTypeToNumpy(origimg)
+
+            ## prform some modifications to images to make them more readable
             origimg = 255 * origimg
             xorImg = np.transpose(xorImg, [1,2,0]).astype('uint8')
             xorImg = 255 * xorImg
             xorimg = cv2.cvtColor(xorImg, cv2.COLOR_GRAY2RGB)
 
+            ## create the concatenated image
             saveImage = compareTwoImages(origimg, output, xorimg)
 
 
             name = os.path.basename(str(name)) ## getting only filename
             name = name[:-3] ## removing the **',)**
 
+            ## save the concatenated image
             finalSave = imageSavePath + name
             cv2.imwrite(finalSave, saveImage)
             
+            ## save data regarding test inference
             inferList.append([name, acc, F1, precision, recall, iou[0], iou[1]])
 
             ## print out number of images processed
